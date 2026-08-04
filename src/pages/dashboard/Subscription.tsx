@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CreditCard,
   Check,
@@ -7,6 +7,7 @@ import {
   Building,
   FileText,
   AlertCircle,
+  Wallet,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,7 +15,9 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { useSubscription } from '../../hooks/useSubscription';
+import { adminApi } from '../../api/adminApi';
 import { formatDate, formatCurrency } from '../../utils/formatters';
+import { CompanyPaymentSetting } from '../../types';
 
 export const Subscription: React.FC = () => {
   const { plans, subscription, payments, reportPayment, isReportingPayment } = useSubscription();
@@ -24,6 +27,18 @@ export const Subscription: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('Transferencia Bancaria');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
+
+  const [companyMethods, setCompanyMethods] = useState<CompanyPaymentSetting[]>([]);
+  const [loadingCompanyMethods, setLoadingCompanyMethods] = useState<boolean>(false);
+
+  useEffect(() => {
+    setLoadingCompanyMethods(true);
+    adminApi
+      .getPublicCompanyPaymentMethods()
+      .then((data) => setCompanyMethods(data))
+      .catch(() => setCompanyMethods([]))
+      .finally(() => setLoadingCompanyMethods(false));
+  }, []);
 
   const handleOpenModal = (planId: number) => {
     setSelectedPlanId(planId);
@@ -61,42 +76,49 @@ export const Subscription: React.FC = () => {
 
       {/* Available Plans Catalog */}
       <div className="grid md:grid-cols-2 gap-8">
-        {plans.map((plan) => (
-          <Card key={plan.id} hoverEffect className="space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                <Badge variant={plan.is_active ? 'active' : 'default'}>
-                  {plan.billing_cycle.toUpperCase()}
-                </Badge>
+        {plans.map((plan) => {
+          const billingCycle = plan.billing_cycle || (plan.duration_days ? `${plan.duration_days} DÍAS` : 'MENSUAL');
+          const isActive = plan.is_active ?? (plan as any).active ?? true;
+
+          return (
+            <Card key={plan.id} hoverEffect className="space-y-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                  <Badge variant={isActive ? 'active' : 'default'}>
+                    {billingCycle.toUpperCase()}
+                  </Badge>
+                </div>
+
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-white">
+                    {formatCurrency(plan.price, plan.currency || 'USD')}
+                  </span>
+                  <span className="text-zinc-400 text-sm">
+                    /{billingCycle.toLowerCase() === 'monthly' ? 'mes' : billingCycle.toLowerCase() === 'yearly' ? 'año' : 'periodo'}
+                  </span>
+                </div>
+
+                <ul className="space-y-2.5 pt-4 border-t border-zinc-800">
+                  {plan.features?.map((feature, fIdx) => (
+                    <li key={fIdx} className="flex items-center gap-2.5 text-sm text-zinc-300">
+                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-extrabold text-white">
-                  {formatCurrency(plan.price, plan.currency || 'USD')}
-                </span>
-                <span className="text-zinc-400 text-sm">/{plan.billing_cycle === 'monthly' ? 'mes' : 'año'}</span>
-              </div>
-
-              <ul className="space-y-2.5 pt-4 border-t border-zinc-800">
-                {plan.features?.map((feature, fIdx) => (
-                  <li key={fIdx} className="flex items-center gap-2.5 text-sm text-zinc-300">
-                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Button
-              variant="emerald"
-              className="w-full"
-              onClick={() => handleOpenModal(plan.id)}
-            >
-              Reportar Pago de este Plan
-            </Button>
-          </Card>
-        ))}
+              <Button
+                variant="emerald"
+                className="w-full"
+                onClick={() => handleOpenModal(plan.id)}
+              >
+                Reportar Pago de este Plan
+              </Button>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Payment History */}
@@ -147,13 +169,31 @@ export const Subscription: React.FC = () => {
         title="Reportar Pago de Suscripción"
       >
         <form onSubmit={handleSubmitPayment} className="space-y-4">
-          <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2 text-xs text-zinc-400">
-            <p className="font-semibold text-zinc-200 flex items-center gap-1.5">
-              <Building className="w-4 h-4 text-emerald-400" /> Datos Bancarios para Transferencia:
+          <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3 text-xs text-zinc-400">
+            <p className="font-bold text-white flex items-center gap-1.5 border-b border-zinc-800 pb-2">
+              <Building className="w-4 h-4 text-emerald-400" /> Cuentas Oficiales VersaGym para Transferir:
             </p>
-            <p><strong>Banco:</strong> Banco de Venezuela / Zelle</p>
-            <p><strong>Cuenta / Correo:</strong> pagos@versagym.com</p>
-            <p><strong>Titular:</strong> VersaGym SaaS C.A.</p>
+            {companyMethods.length === 0 ? (
+              <p className="text-zinc-500 italic">No hay cuentas bancarias activas registradas. Contacta al soporte.</p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {companyMethods.map((m) => (
+                  <div key={m.id} className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800/80 space-y-1">
+                    <div className="flex items-center justify-between font-semibold text-emerald-400">
+                      <span>{m.bank_name}</span>
+                      <span className="text-[10px] uppercase font-mono bg-zinc-950 px-2 py-0.5 rounded text-zinc-400">
+                        {m.payment_type}
+                      </span>
+                    </div>
+                    <p className="text-zinc-200"><strong>Titular:</strong> {m.account_holder}</p>
+                    {m.account_number && <p className="font-mono text-zinc-300"><strong>Cuenta:</strong> {m.account_number}</p>}
+                    {m.id_number && <p><strong>RIF / DNI:</strong> {m.id_number}</p>}
+                    {m.email_or_phone && <p className="font-mono text-indigo-300"><strong>Correo / Tel:</strong> {m.email_or_phone}</p>}
+                    {m.notes && <p className="text-zinc-500 italic">{m.notes}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -163,10 +203,20 @@ export const Subscription: React.FC = () => {
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-100 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500/20"
             >
-              <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-              <option value="Pago Móvil">Pago Móvil</option>
-              <option value="Zelle">Zelle</option>
-              <option value="Binance Pay">Binance Pay (USDT)</option>
+              {companyMethods.length > 0 ? (
+                companyMethods.map((m) => (
+                  <option key={m.id} value={`${m.bank_name} (${m.payment_type})`}>
+                    {m.bank_name} - {m.account_holder}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                  <option value="Pago Móvil">Pago Móvil</option>
+                  <option value="Zelle">Zelle</option>
+                  <option value="PayPal">PayPal</option>
+                </>
+              )}
             </select>
           </div>
 

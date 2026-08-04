@@ -18,13 +18,17 @@ import { copyToClipboard } from '../../utils/clipboard';
 import { useUIStore } from '../../store/uiStore';
 import { Link } from 'react-router-dom';
 
+import { subscriptionApi } from '../../api/subscriptionApi';
+
 export const Overview: React.FC = () => {
   const { user, subscription } = useAuth();
   const addToast = useUIStore((s) => s.addToast);
   const [copied, setCopied] = useState(false);
+  const [isUnbinding, setIsUnbinding] = useState(false);
+  const [hardwareId, setHardwareId] = useState<string | null>(user?.hardware_id || null);
 
-  // License Key fallback si aún no existe en backend
-  const licenseKey = subscription?.license_key || 'VERSA-TRIAL-8829-9401-X71A';
+  // License Key
+  const licenseKey = user?.license_key || subscription?.license_key || 'VERSA-TRIAL-8829-9401-X71A';
   const daysLeft = subscription?.trial_days_left ?? 30;
   const status = subscription?.status || 'trial';
 
@@ -34,6 +38,23 @@ export const Overview: React.FC = () => {
       setCopied(true);
       addToast('success', 'License Key copiada al portapapeles');
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleUnbindDevice = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas desvincular la computadora actual? Podrás activar la licencia en un nuevo equipo.')) {
+      return;
+    }
+
+    try {
+      setIsUnbinding(true);
+      const res = await subscriptionApi.unbindDevice();
+      setHardwareId(null);
+      addToast('success', res.message || 'Equipo desvinculado exitosamente.');
+    } catch {
+      addToast('error', 'Error al desvincular el equipo.');
+    } finally {
+      setIsUnbinding(false);
     }
   };
 
@@ -74,7 +95,7 @@ export const Overview: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-white">Clave de Licencia (License Key)</h3>
-                <p className="text-xs text-zinc-400">Ingresa este código en tu aplicación VersaGym de escritorio</p>
+                <p className="text-xs text-zinc-400">Clave única vinculada exclusivamente a una sola computadora</p>
               </div>
             </div>
             <Badge variant={status}>{status.toUpperCase()}</Badge>
@@ -92,6 +113,33 @@ export const Overview: React.FC = () => {
             >
               {copied ? 'Copiado' : 'Copiar'}
             </Button>
+          </div>
+
+          {/* Machine Binding Info Footer */}
+          <div className="pt-3 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+            <div>
+              {hardwareId ? (
+                <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <Check className="w-3.5 h-3.5" /> Vinculado a PC (ID: {hardwareId.substring(0, 12)}...)
+                </span>
+              ) : (
+                <span className="text-amber-400 font-medium">
+                  ⚠️ Ninguna computadora vinculada aún (Lista para activar en tu PC)
+                </span>
+              )}
+            </div>
+
+            {hardwareId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUnbindDevice}
+                isLoading={isUnbinding}
+                className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+              >
+                Desvincular Equipo
+              </Button>
+            )}
           </div>
         </Card>
 

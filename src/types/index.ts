@@ -7,6 +7,10 @@ export interface User {
   role: Role;
   gym_name?: string;
   phone?: string;
+  license_key?: string;
+  public_token?: string;
+  hardware_id?: string | null;
+  activated_at?: string | null;
   created_at?: string;
 }
 
@@ -16,10 +20,13 @@ export interface SaasPlan {
   id: number;
   name: string;
   price: number;
-  currency: string;
-  billing_cycle: 'monthly' | 'yearly';
-  features: string[];
-  is_active: boolean;
+  currency?: string;
+  duration_days?: number;
+  billing_cycle?: string;
+  features?: string[];
+  is_active?: boolean;
+  active?: boolean;
+  description?: string;
 }
 
 export interface SaasSubscription {
@@ -50,6 +57,28 @@ export interface SaasPayment {
   plan?: SaasPlan;
 }
 
+export interface MemberPayment {
+  id: number;
+  gym_owner_id: number;
+  member_name: string;
+  member_dni: string;
+  amount: number;
+  reference: string;
+  voucher_path: string;
+  status: PaymentStatus;
+  public_token: string;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface GymPublicInfo {
+  gym_owner_id: number;
+  gym_name: string;
+  owner_name: string;
+  public_token: string;
+}
+
 export interface Backup {
   id: number;
   user_id: number;
@@ -69,4 +98,17 @@ export interface AuthResponse {
   token: string;
   user: User;
   subscription?: SaasSubscription;
+}
+
+export interface CompanyPaymentSetting {
+  id: number;
+  bank_name: string;
+  payment_type: 'bank_transfer' | 'pago_movil' | 'zelle' | 'paypal' | 'cash' | 'other' | string;
+  account_number?: string;
+  account_holder: string;
+  id_number?: string;
+  email_or_phone?: string;
+  notes?: string;
+  is_active: boolean;
+  created_at?: string;
 }

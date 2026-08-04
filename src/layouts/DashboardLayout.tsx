@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   CreditCard,
   Database,
+  Users,
   LogOut,
   User,
   Menu,
@@ -106,6 +107,19 @@ export const DashboardLayout: React.FC = () => {
 
         {/* Footer Actions */}
         <div className="pt-6 border-t border-zinc-800/80 space-y-3">
+          {user?.role === 'super_admin' && (
+            <Link to="/admin">
+              <Button
+                variant="emerald"
+                size="sm"
+                className="w-full justify-start text-xs font-bold mb-2 bg-indigo-600 hover:bg-indigo-500 text-white"
+                leftIcon={<KeyRound className="w-4 h-4" />}
+              >
+                Panel Super Admin 👑
+              </Button>
+            </Link>
+          )}
+
           {subscription && (
             <div className="flex items-center justify-between px-2">
               <span className="text-xs text-zinc-400">Estado Licencia:</span>
