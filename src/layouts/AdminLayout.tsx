@@ -16,6 +16,14 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 
+const ADMIN_NAV_ITEMS = [
+  { label: 'Panel General', path: '/admin', icon: LayoutDashboard },
+  { label: 'Planes SaaS', path: '/admin/plans', icon: Package },
+  { label: 'Aprobación de Pagos', path: '/admin/payments', icon: CreditCard },
+  { label: 'Gimnasios Afiliados', path: '/admin/gyms', icon: Users },
+  { label: 'Cuentas de Pago VersaGym', path: '/admin/company-payment', icon: Wallet },
+];
+
 export const AdminLayout: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -29,14 +37,6 @@ export const AdminLayout: React.FC = () => {
   if (user?.role !== 'super_admin') {
     return <Navigate to="/dashboard" replace />;
   }
-
-  const navItems = [
-    { label: 'Panel General', path: '/admin', icon: LayoutDashboard },
-    { label: 'Planes SaaS', path: '/admin/plans', icon: Package },
-    { label: 'Aprobación de Pagos', path: '/admin/payments', icon: CreditCard },
-    { label: 'Gimnasios Afiliados', path: '/admin/gyms', icon: Users },
-    { label: 'Cuentas de Pago VersaGym', path: '/admin/company-payment', icon: Wallet },
-  ];
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col md:flex-row text-zinc-100">
@@ -89,7 +89,7 @@ export const AdminLayout: React.FC = () => {
 
           {/* Navigation Links */}
           <nav className="space-y-1.5">
-            {navItems.map((item) => {
+            {ADMIN_NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
 

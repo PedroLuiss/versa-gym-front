@@ -17,6 +17,13 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 
+const NAV_ITEMS = [
+  { label: 'Panel de Inicio', path: '/dashboard', icon: LayoutDashboard },
+  { label: 'Gestión de Suscripción', path: '/dashboard/subscription', icon: CreditCard },
+  { label: 'Historial de Pagos', path: '/dashboard/payments', icon: Clock },
+  { label: 'Mis Backups', path: '/dashboard/backups', icon: Database },
+];
+
 export const DashboardLayout: React.FC = () => {
   const { user, subscription, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -25,13 +32,6 @@ export const DashboardLayout: React.FC = () => {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
-  const navItems = [
-    { label: 'Panel de Inicio', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Gestión de Suscripción', path: '/dashboard/subscription', icon: CreditCard },
-    { label: 'Historial de Pagos', path: '/dashboard/payments', icon: Clock },
-    { label: 'Mis Backups', path: '/dashboard/backups', icon: Database },
-  ];
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col md:flex-row text-zinc-100">
@@ -84,7 +84,7 @@ export const DashboardLayout: React.FC = () => {
 
           {/* Navigation Links */}
           <nav className="space-y-1.5">
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
 
