@@ -1,11 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Dumbbell,
-  ShieldCheck,
   Zap,
   HardDrive,
-  Users,
   Check,
   ArrowRight,
   Sparkles,
@@ -14,8 +11,19 @@ import {
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { useQuery } from '@tanstack/react-query';
+import { subscriptionApi } from '../api/subscriptionApi';
+import { formatCurrency, formatBillingCycle, formatCyclePeriod } from '../utils/formatters';
+import { useAuth } from '../hooks/useAuth';
 
 export const Home: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  const { data: dbPlans = [], isLoading: isLoadingPlans } = useQuery({
+    queryKey: ['public-saas-plans'],
+    queryFn: subscriptionApi.getPlans,
+  });
+
   const features = [
     {
       icon: Zap,
@@ -31,35 +39,6 @@ export const Home: React.FC = () => {
       icon: Lock,
       title: 'Licencia Inteligente por Dispositivo',
       description: 'Activación simple con License Key para garantizar la operatividad de tu gimnasio sin interrupciones.',
-    },
-  ];
-
-  const plans = [
-    {
-      name: 'Plan Mensual',
-      price: '$29.99',
-      period: '/mes',
-      description: 'Ideal para gimnasios independientes y centros de entrenamiento en crecimiento.',
-      features: [
-        'Licencia ejecutable VersaGym para PC',
-        'Socios ilimitados',
-        'Backups automáticos diarios',
-        'Soporte técnico preferencial',
-      ],
-      popular: false,
-    },
-    {
-      name: 'Plan Anual',
-      price: '$269.99',
-      period: '/año',
-      description: 'Ahorra 25% anual. La solución definitiva para centros de alto rendimiento.',
-      features: [
-        'Todas las características del Plan Mensual',
-        '2 meses de descuento incluidos',
-        'Migración de datos inicial asistida',
-        'Soporte prioritario 24/7',
-      ],
-      popular: true,
     },
   ];
 
@@ -81,9 +60,9 @@ export const Home: React.FC = () => {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/register">
-              <Button variant="emerald" size="lg" className="w-full sm:w-auto" rightIcon={<ArrowRight className="w-5 h-5" />}>
-                Comenzar Prueba Gratis (30 días)
+            <Link to={isAuthenticated ? '/dashboard/subscription' : '/register'}>
+              <Button variant="emerald" size="lg" className="w-full sm:w-auto font-bold" rightIcon={<ArrowRight className="w-5 h-5" />}>
+                {isAuthenticated ? 'Adquirir Plan' : 'Comenzar Prueba Gratis (30 días)'}
               </Button>
             </Link>
             <a href="#plans">
@@ -122,7 +101,7 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
+      {/* Dynamic Database Pricing Section */}
       <section id="plans" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-white tracking-tight">
@@ -133,51 +112,91 @@ export const Home: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {plans.map((plan, idx) => (
-            <Card
-              key={idx}
-              className={`relative space-y-6 flex flex-col justify-between ${
-                plan.popular ? 'border-emerald-500/50 ring-1 ring-emerald-500/30 bg-zinc-900/90' : ''
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="bg-emerald-500 text-zinc-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Recomendado
-                  </span>
-                </div>
-              )}
+        {isLoadingPlans ? (
+          <div className="text-center py-12 text-zinc-400">
+            <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin mx-auto mb-3"></div>
+            <p className="text-sm">Cargando planes de membresía...</p>
+          </div>
+        ) : dbPlans.length === 0 ? (
+          <Card className="text-center py-12 text-zinc-500 max-w-md mx-auto">
+            <p className="text-base font-semibold text-zinc-300">No hay planes publicados actualmente.</p>
+            <p className="text-xs text-zinc-500 mt-1">Registra tu gimnasio para iniciar la prueba gratuita de 30 días.</p>
+          </Card>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {dbPlans.map((plan, idx) => {
+              const billingCycle = formatBillingCycle(plan.billing_cycle, plan.duration_days);
+              const periodText = formatCyclePeriod(plan.billing_cycle, plan.duration_days);
+              const isPopular = plan.name.toLowerCase().includes('anual') || idx === 1;
 
-              <div className="space-y-4">
-                <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-white">{plan.price}</span>
-                  <span className="text-zinc-400 text-sm font-medium">{plan.period}</span>
-                </div>
-                <p className="text-sm text-zinc-400">{plan.description}</p>
+              const planFeatures = plan.features && plan.features.length > 0
+                ? plan.features
+                : [
+                    'Licencia ejecutable VersaGym para PC',
+                    'Gestión ilimitada de socios del gimnasio',
+                    'Backups automáticos cifrados en la nube',
+                    'Soporte técnico y actualizaciones incluidas',
+                  ];
 
-                <ul className="space-y-3 pt-4 border-t border-zinc-800">
-                  {plan.features.map((feat, fIdx) => (
-                    <li key={fIdx} className="flex items-center gap-3 text-sm text-zinc-300">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <Link to="/register">
-                <Button
-                  variant={plan.popular ? 'emerald' : 'secondary'}
-                  className="w-full mt-6"
+              return (
+                <Card
+                  key={plan.id || idx}
+                  className={`relative space-y-6 flex flex-col justify-between ${
+                    isPopular ? 'border-emerald-500/50 ring-1 ring-emerald-500/30 bg-zinc-900/90' : ''
+                  }`}
                 >
-                  Registrar mi Gimnasio
-                </Button>
-              </Link>
-            </Card>
-          ))}
-        </div>
+                  {isPopular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                      <span className="bg-emerald-500 text-zinc-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                        Recomendado
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+                      <Badge variant="active" className="text-[10px]">
+                        {billingCycle}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-extrabold text-white">
+                        {formatCurrency(plan.price, plan.currency || 'USD')}
+                      </span>
+                      <span className="text-zinc-400 text-sm font-medium">
+                        /{periodText}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-zinc-400 leading-relaxed">
+                      {plan.description || 'Solución integral de gestión y licenciamiento para tu gimnasio.'}
+                    </p>
+
+                    <ul className="space-y-3 pt-4 border-t border-zinc-800">
+                      {planFeatures.map((feat, fIdx) => (
+                        <li key={fIdx} className="flex items-center gap-3 text-sm text-zinc-300">
+                          <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <Link to={isAuthenticated ? `/dashboard/subscription?planId=${plan.id}` : '/register'}>
+                    <Button
+                      variant={isPopular ? 'emerald' : 'secondary'}
+                      className="w-full mt-6 font-bold"
+                    >
+                      {isAuthenticated ? 'Adquirir Plan' : 'Registrar mi Gimnasio'}
+                    </Button>
+                  </Link>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

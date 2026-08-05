@@ -14,6 +14,7 @@ export interface CreatePlanPayload {
   duration_days: number;
   description?: string;
   active?: boolean;
+  is_active?: boolean;
 }
 
 export interface CompanyPaymentMethodPayload {

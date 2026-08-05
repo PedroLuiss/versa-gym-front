@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Check, Edit2, Trash2, Package } from 'lucide-react';
+import { Plus, Check, Edit2, Package } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { useAdmin } from '../../hooks/useAdmin';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatCyclePeriod } from '../../utils/formatters';
 
 export const AdminPlans: React.FC = () => {
-  const { plans, createPlan, updatePlan, deletePlan, isCreatingPlan } = useAdmin();
+  const { plans, createPlan, updatePlan, isCreatingPlan } = useAdmin();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
@@ -30,11 +30,23 @@ export const AdminPlans: React.FC = () => {
 
   const handleOpenEditModal = (plan: any) => {
     setEditingPlanId(plan.id);
-    setName(plan.name);
-    setPrice(plan.price.toString());
-    setDurationDays((plan.duration_days || 30).toString());
+    setName(plan.name || '');
+    setPrice(plan.price ? String(plan.price) : '');
+    setDurationDays(plan.duration_days ? String(plan.duration_days) : '30');
     setDescription(plan.description || '');
     setIsModalOpen(true);
+  };
+
+  const handleToggleActive = async (plan: any) => {
+    try {
+      const currentActive = plan.active ?? plan.is_active ?? true;
+      await updatePlan({
+        id: plan.id,
+        data: { active: !currentActive, is_active: !currentActive },
+      });
+    } catch {
+      // Manejado en el hook
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,20 +56,19 @@ export const AdminPlans: React.FC = () => {
       price: parseFloat(price),
       duration_days: parseInt(durationDays, 10),
       description,
-      active: true,
+      is_active: true,
     };
 
-    if (editingPlanId) {
-      await updatePlan({ id: editingPlanId, data: payload });
-    } else {
-      await createPlan(payload);
+    try {
+      if (editingPlanId) {
+        await updatePlan({ id: editingPlanId, data: payload });
+      } else {
+        await createPlan(payload);
+      }
+      setIsModalOpen(false);
+    } catch {
+      // Manejado en el hook
     }
-    setIsModalOpen(false);
-  };
-
-  const handleToggleActive = async (plan: any) => {
-    const newStatus = !(plan.active ?? plan.is_active);
-    await updatePlan({ id: plan.id, data: { active: newStatus } });
   };
 
   return (
@@ -69,7 +80,7 @@ export const AdminPlans: React.FC = () => {
             <Package className="w-8 h-8 text-emerald-400" /> Gestión de Planes SaaS
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Crea, edita y administra las opciones de suscripción y alquiler del software ejecutable.
+            Crea, edita o desactiva las membresías disponibles para los gimnasios clientes.
           </p>
         </div>
 
@@ -82,6 +93,8 @@ export const AdminPlans: React.FC = () => {
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map((plan) => {
           const isActive = plan.active ?? plan.is_active ?? true;
+          const periodText = formatCyclePeriod(plan.billing_cycle, plan.duration_days);
+
           return (
             <Card key={plan.id} hoverEffect className="space-y-6 flex flex-col justify-between border-zinc-800">
               <div className="space-y-4">
@@ -96,7 +109,7 @@ export const AdminPlans: React.FC = () => {
                   <span className="text-4xl font-extrabold text-white">
                     {formatCurrency(plan.price)}
                   </span>
-                  <span className="text-zinc-400 text-sm">/{plan.duration_days || 30} días</span>
+                  <span className="text-zinc-400 text-sm">/{periodText}</span>
                 </div>
 
                 <p className="text-sm text-zinc-400 leading-relaxed">

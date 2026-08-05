@@ -7,8 +7,8 @@ Plataforma Web SaaS y Portal de Gestión para **Versa Gym**, desarrollada con **
 ## 1. Visión General del Sistema
 
 **Versa Gym Frontend** proporciona una experiencia de usuario fluida para:
-- **Visitantes**: Landing Page informativa con catálogo dinámico de planes SaaS.
-- **Dueños de Gimnasios**: Registro con periodo de prueba de 30 días, banner explicativo al descargar la app para PC, indicador del plan activo en el Dashboard, bloqueo inteligente de cambio de plan mientras la suscripción esté activa o en revisión, módulo separado de **Gestión de Suscripción** y módulo independiente de **Historial de Pagos**, consulta de cuentas oficiales VersaGym para realizar transferencias, copia de la clave de licencia y consulta de respaldos remotos.
+- **Visitantes**: Landing Page informativa con catálogo dinámico de planes SaaS conectados directamente a la base de datos central (`GET /api/saas-plans`).
+- **Dueños de Gimnasios**: Registro con periodo de prueba de 30 días, botones dinámicos *"Adquirir Plan"* si está autenticado (con apertura instantánea del modal de pago pre-seleccionado en `/dashboard/subscription?planId={id}`), banner explicativo al descargar la app para PC, indicador del plan activo en el Dashboard, bloqueo inteligente de cambio de plan mientras la suscripción esté activa o en revisión, módulo separado de **Gestión de Suscripción** y módulo independiente de **Historial de Pagos**, consulta de cuentas oficiales VersaGym para realizar transferencias, copia de la clave de licencia y consulta de respaldos remotos.
 - **Super Administradores**: Panel de administración exclusivo (`/admin`) para la gestión de planes SaaS, administración de cuentas bancarias y métodos de pago oficiales de la empresa, revisión/aprobación de pagos de suscripciones y monitoreo de gimnasios.
 - **Clientes del Gimnasio (Alumnos)**: Portal web móvil público (`/reportar-pago/:token`) para reportar pagos de cuotas adjuntando comprobantes, procesados posteriormente en la aplicación de escritorio.
 
@@ -25,11 +25,11 @@ El proyecto está diseñado siguiendo una arquitectura modular por capas basada 
 ### Capas Principales:
 
 1. **Vistas y Páginas (`src/pages/`)**:
-   - `Home.tsx`: Landing Page pública con héroe, matriz de características y planes.
+   - `Home.tsx`: Landing Page pública con héroe, matriz de características, catálogo dinámico de planes SaaS y botones de CTA contextuales (`"Adquirir Plan"` que redirige con `planId` pre-seleccionado).
    - `auth/Login.tsx` y `Register.tsx`: Formularios de autenticación con feedback de errores.
    - `PublicMemberPayment.tsx`: Vista pública responsiva sin navbar/sidebar en `/reportar-pago/:token` para que los alumnos reporten transferencias.
    - `dashboard/Overview.tsx`: Resumen de estado de licencia, banner con aviso de 30 días gratis de prueba para usuarios nuevos, visualización del plan activo, fecha de vencimiento (`end_date`), contador dinámico de días restantes y botón de copia rápida de la `license_key`.
-   - `dashboard/Subscription.tsx`: Módulo enfocado únicamente en la contratación de planes SaaS, banners de advertencia y bloqueo de botones cuando se posee una suscripción activa o un pago pendiente, e integración de modal con cuentas oficiales VersaGym.
+   - `dashboard/Subscription.tsx`: Módulo enfocado únicamente en la contratación de planes SaaS, detección automática de `planId` en los parámetros de la URL (`useSearchParams`) para abrir el modal al instante, banners de advertencia y bloqueo de botones cuando se posee una suscripción activa o un pago pendiente, e integración de modal con cuentas oficiales VersaGym.
    - `dashboard/PaymentHistory.tsx`: Módulo independiente en `/dashboard/payments` dedicado al seguimiento completo del historial de pagos SaaS del dueño de gimnasio.
    - `dashboard/Backups.tsx`: Listado de archivos de respaldo `.sqlite` almacenados en la nube.
    - **Administración Super Admin (`src/pages/admin/`)**:
@@ -60,7 +60,7 @@ El proyecto está diseñado siguiendo una arquitectura modular por capas basada 
 | `authApi.login` | `POST /api/login` | Inicia sesión y extrae `access_token` y objeto `user`. |
 | `authApi.register` | `POST /api/register` | Registra usuario e inicia prueba de 30 días. |
 | `authApi.me` | `GET /api/user` / `GET /api/me` | Obtiene el perfil actualizado y suscripción. |
-| `subscriptionApi.getPlans` | `GET /api/saas-plans` | Recupera los planes activos. |
+| `subscriptionApi.getPlans` | `GET /api/saas-plans` | Recupera los planes activos creados en la base de datos (consumido en Landing y Dashboard). |
 | `subscriptionApi.getCurrentSubscription` | `GET /api/subscription` | Obtiene el estado, vigencia, días restantes y plan activo de la suscripción. |
 | `adminApi.getPublicCompanyPaymentMethods` | `GET /api/company-payment-methods` | Recupera cuentas de cobro oficiales de VersaGym para mostrar al dueño al pagar. |
 | `paymentApi.reportPayment` | `POST /api/payments/request` | Envía el formulario `FormData` con `saas_plan_id` y `voucher` SaaS (valida bloqueo si hay plan activo). |
@@ -81,10 +81,10 @@ El proyecto está diseñado siguiendo una arquitectura modular por capas basada 
 ## 4. Normalización y Manejo Defensivo de Datos
 
 Para prevenir errores de ejecución (`TypeError`), el frontend implementa fallbacks defensivos en los componentes:
-* **Lectura de Planes (`Subscription.tsx`)**:
+* **Lectura de Planes (`Subscription.tsx` / `Home.tsx`)**:
   ```tsx
-  const billingCycle = plan.billing_cycle || (plan.duration_days ? `${plan.duration_days} DÍAS` : 'MENSUAL');
-  const isActive = plan.is_active ?? (plan as any).active ?? true;
+  const billingCycle = formatBillingCycle(plan.billing_cycle, plan.duration_days);
+  const periodText = formatCyclePeriod(plan.billing_cycle, plan.duration_days);
   ```
 * **Interfaces Tipadas (`types/index.ts`)**:
   - `User`: Incluye propiedad opcional `status?: SubscriptionStatus;`.

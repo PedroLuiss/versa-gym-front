@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  CreditCard,
   Check,
   Upload,
   Clock,
   Building,
-  FileText,
-  AlertCircle,
-  Wallet,
   Lock,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -16,11 +12,13 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../../api/adminApi';
-import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatCurrency, formatBillingCycle, formatCyclePeriod } from '../../utils/formatters';
 import { CompanyPaymentSetting } from '../../types';
 
 export const Subscription: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const { plans, subscription, payments, reportPayment, isReportingPayment } = useSubscription();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,6 +43,15 @@ export const Subscription: React.FC = () => {
       .catch(() => setCompanyMethods([]))
       .finally(() => setLoadingCompanyMethods(false));
   }, []);
+
+  // Auto open modal if planId parameter is in the URL
+  useEffect(() => {
+    const planIdParam = searchParams.get('planId');
+    if (planIdParam && !cannotChangePlan) {
+      setSelectedPlanId(Number(planIdParam));
+      setIsModalOpen(true);
+    }
+  }, [searchParams, cannotChangePlan]);
 
   const handleOpenModal = (planId: number) => {
     if (cannotChangePlan) return;
@@ -110,7 +117,8 @@ export const Subscription: React.FC = () => {
       {/* Available Plans Catalog */}
       <div className="grid md:grid-cols-2 gap-8">
         {plans.map((plan) => {
-          const billingCycle = plan.billing_cycle || (plan.duration_days ? `${plan.duration_days} DÍAS` : 'MENSUAL');
+          const billingCycle = formatBillingCycle(plan.billing_cycle, plan.duration_days);
+          const periodText = formatCyclePeriod(plan.billing_cycle, plan.duration_days);
           const isActive = plan.is_active ?? (plan as any).active ?? true;
 
           return (
@@ -119,7 +127,7 @@ export const Subscription: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold text-white">{plan.name}</h3>
                   <Badge variant={isActive ? 'active' : 'default'}>
-                    {billingCycle.toUpperCase()}
+                    {billingCycle}
                   </Badge>
                 </div>
 
@@ -128,7 +136,7 @@ export const Subscription: React.FC = () => {
                     {formatCurrency(plan.price, plan.currency || 'USD')}
                   </span>
                   <span className="text-zinc-400 text-sm">
-                    /{billingCycle.toLowerCase() === 'monthly' ? 'mes' : billingCycle.toLowerCase() === 'yearly' ? 'año' : 'periodo'}
+                    /{periodText}
                   </span>
                 </div>
 
