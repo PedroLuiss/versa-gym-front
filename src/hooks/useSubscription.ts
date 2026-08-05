@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore';
 export const useSubscription = () => {
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
-  const setSubscription = useAuthStore((s) => s.setSubscription);
+  const { user, setSubscription } = useAuthStore();
 
   const plansQuery = useQuery({
     queryKey: ['saas-plans'],
@@ -15,24 +15,26 @@ export const useSubscription = () => {
   });
 
   const currentSubscriptionQuery = useQuery({
-    queryKey: ['current-subscription'],
+    queryKey: ['current-subscription', user?.id],
     queryFn: async () => {
       const sub = await subscriptionApi.getCurrentSubscription();
       if (sub) setSubscription(sub);
       return sub;
     },
+    enabled: !!user,
   });
 
   const paymentsQuery = useQuery({
-    queryKey: ['payments-history'],
+    queryKey: ['payments-history', user?.id],
     queryFn: paymentApi.getPayments,
+    enabled: !!user,
   });
 
   const reportPaymentMutation = useMutation({
     mutationFn: (data: PaymentReportFormData) => paymentApi.reportPayment(data),
     onSuccess: () => {
       addToast('success', '¡Reporte de pago enviado con éxito! En espera de validación.');
-      queryClient.invalidateQueries({ queryKey: ['payments-history'] });
+      queryClient.invalidateQueries({ queryKey: ['payments-history', user?.id] });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || 'Error al enviar el comprobante de pago.';

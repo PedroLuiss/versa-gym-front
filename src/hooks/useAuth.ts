@@ -1,15 +1,17 @@
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { authApi, LoginPayload, RegisterPayload } from '../api/authApi';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export const useAuth = () => {
+  const queryClient = useQueryClient();
   const { setAuth, logout: clearAuth, user, subscription, isAuthenticated } = useAuthStore();
   const addToast = useUIStore((s) => s.addToast);
 
   const loginMutation = useMutation({
     mutationFn: (payload: LoginPayload) => authApi.login(payload),
     onSuccess: (data) => {
+      queryClient.clear();
       setAuth(data.token, data.user, data.subscription);
       addToast('success', `¡Bienvenido de nuevo, ${data.user.name}!`);
     },
@@ -22,6 +24,7 @@ export const useAuth = () => {
   const registerMutation = useMutation({
     mutationFn: (payload: RegisterPayload) => authApi.register(payload),
     onSuccess: (data) => {
+      queryClient.clear();
       setAuth(data.token, data.user, data.subscription);
       addToast('success', '¡Cuenta creada con éxito! Tu prueba gratuita de 30 días ha comenzado.');
     },
@@ -37,6 +40,7 @@ export const useAuth = () => {
     } catch {
       // Ignorar errores de logout en API y limpiar localmente
     } finally {
+      queryClient.clear();
       clearAuth();
       addToast('info', 'Sesión cerrada correctamente.');
     }

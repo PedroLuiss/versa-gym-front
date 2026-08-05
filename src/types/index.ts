@@ -11,6 +11,7 @@ export interface User {
   public_token?: string;
   hardware_id?: string | null;
   activated_at?: string | null;
+  status?: SubscriptionStatus;
   created_at?: string;
 }
 
@@ -30,13 +31,17 @@ export interface SaasPlan {
 }
 
 export interface SaasSubscription {
-  id: number;
-  user_id: number;
+  id?: number;
+  user_id?: number;
   plan_id?: number;
-  license_key: string;
+  license_key?: string;
   status: SubscriptionStatus;
-  starts_at: string;
-  ends_at: string;
+  starts_at?: string;
+  ends_at?: string;
+  start_date?: string;
+  end_date?: string;
+  trial_ends_at?: string;
+  days_left?: number;
   trial_days_left?: number;
   plan?: SaasPlan;
 }
