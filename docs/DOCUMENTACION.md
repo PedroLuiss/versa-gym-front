@@ -8,7 +8,7 @@ Plataforma Web SaaS y Portal de Gestión para **Versa Gym**, desarrollada con **
 
 **Versa Gym Frontend** proporciona una experiencia de usuario fluida para:
 - **Visitantes**: Landing Page informativa con catálogo dinámico de planes SaaS.
-- **Dueños de Gimnasios**: Registro con periodo de prueba de 30 días, banner explicativo de prueba al descargar la app para PC, indicador del plan activo en el Dashboard, consulta de cuentas oficiales VersaGym para realizar transferencias, gestión de la suscripción SaaS, copia de la clave de licencia y consulta de respaldos remotos.
+- **Dueños de Gimnasios**: Registro con periodo de prueba de 30 días, banner explicativo al descargar la app para PC, indicador del plan activo en el Dashboard, bloqueo inteligente de cambio de plan mientras la suscripción esté activa o en revisión, módulo separado de **Gestión de Suscripción** y módulo independiente de **Historial de Pagos**, consulta de cuentas oficiales VersaGym para realizar transferencias, copia de la clave de licencia y consulta de respaldos remotos.
 - **Super Administradores**: Panel de administración exclusivo (`/admin`) para la gestión de planes SaaS, administración de cuentas bancarias y métodos de pago oficiales de la empresa, revisión/aprobación de pagos de suscripciones y monitoreo de gimnasios.
 - **Clientes del Gimnasio (Alumnos)**: Portal web móvil público (`/reportar-pago/:token`) para reportar pagos de cuotas adjuntando comprobantes, procesados posteriormente en la aplicación de escritorio.
 
@@ -29,7 +29,8 @@ El proyecto está diseñado siguiendo una arquitectura modular por capas basada 
    - `auth/Login.tsx` y `Register.tsx`: Formularios de autenticación con feedback de errores.
    - `PublicMemberPayment.tsx`: Vista pública responsiva sin navbar/sidebar en `/reportar-pago/:token` para que los alumnos reporten transferencias.
    - `dashboard/Overview.tsx`: Resumen de estado de licencia, banner con aviso de 30 días gratis de prueba para usuarios nuevos, visualización del plan activo, fecha de vencimiento (`end_date`), contador dinámico de días restantes y botón de copia rápida de la `license_key`.
-   - `dashboard/Subscription.tsx`: Catálogo de planes SaaS, carga dinámica de cuentas oficiales VersaGym e historial de pagos aislado por usuario.
+   - `dashboard/Subscription.tsx`: Módulo enfocado únicamente en la contratación de planes SaaS, banners de advertencia y bloqueo de botones cuando se posee una suscripción activa o un pago pendiente, e integración de modal con cuentas oficiales VersaGym.
+   - `dashboard/PaymentHistory.tsx`: Módulo independiente en `/dashboard/payments` dedicado al seguimiento completo del historial de pagos SaaS del dueño de gimnasio.
    - `dashboard/Backups.tsx`: Listado de archivos de respaldo `.sqlite` almacenados en la nube.
    - **Administración Super Admin (`src/pages/admin/`)**:
      - `AdminDashboard.tsx`: Métricas globales del sistema SaaS.
@@ -62,7 +63,7 @@ El proyecto está diseñado siguiendo una arquitectura modular por capas basada 
 | `subscriptionApi.getPlans` | `GET /api/saas-plans` | Recupera los planes activos. |
 | `subscriptionApi.getCurrentSubscription` | `GET /api/subscription` | Obtiene el estado, vigencia, días restantes y plan activo de la suscripción. |
 | `adminApi.getPublicCompanyPaymentMethods` | `GET /api/company-payment-methods` | Recupera cuentas de cobro oficiales de VersaGym para mostrar al dueño al pagar. |
-| `paymentApi.reportPayment` | `POST /api/payments/request` | Envía el formulario `FormData` con `saas_plan_id` y `voucher` SaaS. |
+| `paymentApi.reportPayment` | `POST /api/payments/request` | Envía el formulario `FormData` con `saas_plan_id` y `voucher` SaaS (valida bloqueo si hay plan activo). |
 | `paymentApi.getPayments` | `GET /api/payments` | Recupera el historial de pagos de suscripción del gimnasio autenticado. |
 | `memberPaymentApi.getPublicInfo` | `GET /api/payment-info/{token}` | Obtiene información básica del gimnasio por su token público. |
 | `memberPaymentApi.reportPayment` | `POST /api/report-payment` | Envía comprobante de pago de un alumno. |
@@ -88,7 +89,12 @@ Para prevenir errores de ejecución (`TypeError`), el frontend implementa fallba
 * **Interfaces Tipadas (`types/index.ts`)**:
   - `User`: Incluye propiedad opcional `status?: SubscriptionStatus;`.
   - `SaasSubscription`: Incluye `days_left`, `start_date`, `end_date`, `trial_ends_at` y `plan`.
-* **Manejo de Arreglos**: Las funciones en `api/` validan si la respuesta viene directamente en la raíz del objeto o dentro de `data` (`Array.isArray(res.data) ? res.data : res.data.data`).
+* **Bloqueo Inteligente de Plan (`Subscription.tsx`)**:
+  ```tsx
+  const hasActiveSubscription = subscription?.status === 'active' && (subscription?.days_left ?? 0) > 0;
+  const hasPendingPayment = payments.some((p) => p.status === 'pending');
+  const cannotChangePlan = hasActiveSubscription || hasPendingPayment;
+  ```
 
 ---
 

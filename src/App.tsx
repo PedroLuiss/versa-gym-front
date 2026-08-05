@@ -10,6 +10,7 @@ import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
 import { Overview } from './pages/dashboard/Overview';
 import { Subscription } from './pages/dashboard/Subscription';
+import { PaymentHistory } from './pages/dashboard/PaymentHistory';
 import { Backups } from './pages/dashboard/Backups';
 import { MemberPayments } from './pages/dashboard/MemberPayments';
 import { PublicMemberPayment } from './pages/PublicMemberPayment';
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Overview />} />
           <Route path="/dashboard/subscription" element={<Subscription />} />
+          <Route path="/dashboard/payments" element={<PaymentHistory />} />
           <Route path="/dashboard/backups" element={<Backups />} />
         </Route>
 

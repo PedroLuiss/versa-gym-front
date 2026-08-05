@@ -8,6 +8,7 @@ import {
   FileText,
   AlertCircle,
   Wallet,
+  Lock,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -31,6 +32,11 @@ export const Subscription: React.FC = () => {
   const [companyMethods, setCompanyMethods] = useState<CompanyPaymentSetting[]>([]);
   const [loadingCompanyMethods, setLoadingCompanyMethods] = useState<boolean>(false);
 
+  // Status checks for active subscription and pending payments
+  const hasActiveSubscription = subscription?.status === 'active' && (subscription?.days_left ?? 0) > 0;
+  const hasPendingPayment = payments.some((p) => p.status === 'pending');
+  const cannotChangePlan = hasActiveSubscription || hasPendingPayment;
+
   useEffect(() => {
     setLoadingCompanyMethods(true);
     adminApi
@@ -41,13 +47,14 @@ export const Subscription: React.FC = () => {
   }, []);
 
   const handleOpenModal = (planId: number) => {
+    if (cannotChangePlan) return;
     setSelectedPlanId(planId);
     setIsModalOpen(true);
   };
 
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlanId || !proofFile) return;
+    if (!selectedPlanId || !proofFile || cannotChangePlan) return;
 
     try {
       await reportPayment({
@@ -60,7 +67,7 @@ export const Subscription: React.FC = () => {
       setReferenceNumber('');
       setProofFile(null);
     } catch {
-      // Manejado en hook
+      // Manejado en el hook
     }
   };
 
@@ -73,6 +80,32 @@ export const Subscription: React.FC = () => {
           Revisa tu plan actual, selecciona una renovación o reporta tu pago de manera rápida.
         </p>
       </div>
+
+      {/* Warning Banners */}
+      {hasActiveSubscription && (
+        <div className="bg-amber-950/40 border border-amber-500/40 p-4 rounded-xl text-amber-200 text-xs flex items-center gap-3 shadow-lg">
+          <Lock className="w-5 h-5 text-amber-400 shrink-0" />
+          <div>
+            <p className="font-bold text-amber-300 text-sm">Suscripción Activa Vigente</p>
+            <p className="text-zinc-300 mt-0.5 leading-relaxed">
+              Tu <strong className="text-white">{subscription?.plan?.name ? `Plan ${subscription.plan.name}` : 'plan actual'}</strong> está vigente hasta el{' '}
+              <strong className="text-amber-400">{formatDate(subscription?.end_date || subscription?.ends_at || '')}</strong> ({subscription?.days_left} días restantes). Debes esperar a que venza para cambiar o contratar un nuevo plan.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {hasPendingPayment && !hasActiveSubscription && (
+        <div className="bg-indigo-950/40 border border-indigo-500/40 p-4 rounded-xl text-indigo-200 text-xs flex items-center gap-3 shadow-lg">
+          <Clock className="w-5 h-5 text-indigo-400 shrink-0" />
+          <div>
+            <p className="font-bold text-indigo-300 text-sm">Reporte de Pago en Revisión</p>
+            <p className="text-zinc-300 mt-0.5 leading-relaxed">
+              Tienes una solicitud de pago enviada al Super Admin en proceso de revisión. Podrás seleccionar o modificar tu plan cuando el administrador verifique tu comprobante.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Available Plans Catalog */}
       <div className="grid md:grid-cols-2 gap-8">
@@ -110,57 +143,25 @@ export const Subscription: React.FC = () => {
               </div>
 
               <Button
-                variant="emerald"
-                className="w-full"
+                variant={cannotChangePlan ? 'outline' : 'emerald'}
+                className={`w-full font-bold ${
+                  cannotChangePlan ? 'opacity-60 cursor-not-allowed text-zinc-400 border-zinc-800' : ''
+                }`}
+                disabled={cannotChangePlan}
                 onClick={() => handleOpenModal(plan.id)}
               >
-                Reportar Pago de este Plan
+                {hasActiveSubscription
+                  ? '🔒 Suscripción Activa Vigente'
+                  : hasPendingPayment
+                  ? '⏳ Pago en Revisión'
+                  : 'Reportar Pago de este Plan'}
               </Button>
             </Card>
           );
         })}
       </div>
 
-      {/* Payment History */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Clock className="w-5 h-5 text-indigo-400" /> Historial de Pagos Reportados
-        </h2>
 
-        {payments.length === 0 ? (
-          <Card className="text-center py-10 text-zinc-500">
-            <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No se han registrado reportes de pago aún.</p>
-          </Card>
-        ) : (
-          <Card className="overflow-x-auto p-0 border border-zinc-800">
-            <table className="w-full text-left text-sm text-zinc-300">
-              <thead className="bg-zinc-950 text-xs font-semibold uppercase text-zinc-400 border-b border-zinc-800">
-                <tr>
-                  <th className="px-6 py-4">Fecha</th>
-                  <th className="px-6 py-4">Método</th>
-                  <th className="px-6 py-4">Referencia</th>
-                  <th className="px-6 py-4">Monto</th>
-                  <th className="px-6 py-4">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60 bg-zinc-900">
-                {payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-zinc-800/40">
-                    <td className="px-6 py-4">{formatDate(p.created_at)}</td>
-                    <td className="px-6 py-4 font-medium">{p.payment_method}</td>
-                    <td className="px-6 py-4 font-mono text-xs">{p.reference_number}</td>
-                    <td className="px-6 py-4 font-semibold text-white">{formatCurrency(p.amount)}</td>
-                    <td className="px-6 py-4">
-                      <Badge variant={p.status}>{p.status.toUpperCase()}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        )}
-      </div>
 
       {/* Report Payment Modal */}
       <Modal

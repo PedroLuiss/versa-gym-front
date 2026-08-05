@@ -4,6 +4,7 @@ import {
   Dumbbell,
   LayoutDashboard,
   CreditCard,
+  Clock,
   Database,
   Users,
   LogOut,
@@ -27,7 +28,8 @@ export const DashboardLayout: React.FC = () => {
 
   const navItems = [
     { label: 'Panel de Inicio', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Suscripción & Pagos', path: '/dashboard/subscription', icon: CreditCard },
+    { label: 'Gestión de Suscripción', path: '/dashboard/subscription', icon: CreditCard },
+    { label: 'Historial de Pagos', path: '/dashboard/payments', icon: Clock },
     { label: 'Mis Backups', path: '/dashboard/backups', icon: Database },
   ];
 
